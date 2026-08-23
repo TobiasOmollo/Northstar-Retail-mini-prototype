@@ -1,8 +1,6 @@
 const http = require("http");
-const crypto = require("crypto");
 const PORT = 3000;
-const inventory = {};
-const WEBHOOK_SECRET = "northstar-dev-secret";
+const inventory = {}; 
 
 function applyEvent(event) {
   inventory[event.sku] = {
@@ -13,14 +11,6 @@ function applyEvent(event) {
   return { status: "applied", current: inventory[event.sku] };
 }
 
-function verifySignature(rawBody, signatureHeader) {
-  if (!signatureHeader) return false;
-  const expected = crypto.createHmac("sha256", WEBHOOK_SECRET).update(rawBody).digest("hex");
-  const a = Buffer.from(signatureHeader);
-  const b = Buffer.from(expected);
-  return a.length === b.length && crypto.timingSafeEqual(a, b);
-}
-
 const server = http.createServer((req, res) => {
   const chunks = [];
   req.on("data", (chunk) => chunks.push(chunk));
@@ -28,13 +18,8 @@ const server = http.createServer((req, res) => {
     const rawBody = Buffer.concat(chunks);
 
     if (req.method === "POST" && req.url === "/webhooks/inventory") {
-      const signature = req.headers["x-signature"];
-      if (!verifySignature(rawBody, signature)) {
-        res.writeHead(401, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ error: "invalid signature" }));
-    }
-        let event;
-        try {
+      let event;
+      try {
         event = JSON.parse(rawBody.toString());
       } catch {
         res.writeHead(400, { "Content-Type": "application/json" });
